@@ -14,3 +14,24 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .fake
+
+# ========================
+# Android
+# ========================
+
+# Build output
+android/build/
+android/app/build/
+
+# Local config - berisi path spesifik komputer masing-masing
+android/local.properties
+android/.gradle/
+
+# Keystore - kalau nanti ada signing config
+*.jks
+*.keystore
+
+# IDE files Android Studio
+android/.idea/
+android/**/.idea/
+*.iml
