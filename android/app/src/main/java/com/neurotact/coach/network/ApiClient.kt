@@ -10,7 +10,7 @@ object ApiClient {
     // Ganti dengan IP laptop kamu saat testing
     // Kalau test di emulator pakai 10.0.2.2
     // Kalau test di HP fisik pakai IP laptop di jaringan yang sama
-    private const val BASE_URL = "http://192.168.100.9:8000/"
+    private const val BASE_URL = "http://192.168.100.28:8000/"
 
     val service: ApiService by lazy {
         Retrofit.Builder()

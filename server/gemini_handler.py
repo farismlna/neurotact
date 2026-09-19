@@ -14,59 +14,69 @@ def build_prompt(text: str) -> str:
     mapping = get_mapping_description()
     return f"""Kamu adalah sistem konversi instruksi taktis sepakbola untuk atlet tunagrahita.
 
-Diberikan teks instruksi dari pelatih, tentukan instruksi taktis utama yang dimaksud
-dan kembalikan kode huruf yang sesuai berdasarkan mapping berikut:
+Diberikan teks instruksi dari pelatih, identifikasi SEMUA instruksi taktis yang ada
+dan kembalikan kode huruf yang sesuai untuk SETIAP instruksi berdasarkan mapping berikut:
 
 {mapping}
 
 Aturan penting:
-- Kembalikan HANYA satu huruf kode yang paling relevan
-- Jika tidak ada yang cocok, kembalikan huruf E (Tahan Posisi) sebagai default
-- Kembalikan HANYA JSON tanpa teks tambahan, tanpa markdown, tanpa backtick
+- Jika ada SATU instruksi, return array dengan satu elemen
+- Jika ada DUA atau lebih instruksi berbeda, return array dengan elemen sesuai urutan konteks
+- Maksimal 3 instruksi per input
+- Jika tidak ada yang cocok, gunakan E (Tahan Posisi) sebagai default
+- Kembalikan HANYA JSON array tanpa teks tambahan, tanpa markdown, tanpa backtick
 
 Input pelatih: "{text}"
 
 Format response yang WAJIB diikuti:
-{{"code": "[huruf]"}}"""
+[{{"code": "[huruf]", "label": "[nama instruksi]"}}]
+
+Contoh jika ada dua instruksi:
+[{{"code": "A", "label": "Maju Serang"}}, {{"code": "E", "label": "Tahan Posisi"}}]"""
 
 def process_speech(text: str) -> dict:
     try:
-        prompt = build_prompt(text)
-
+        prompt   = build_prompt(text)
         response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=prompt
+            model    = "gemini-3.6-flash",
+            contents = prompt
         )
 
         raw = response.text.strip()
-
-        # Bersihkan jika ada backtick atau markdown
         raw = raw.replace("```json", "").replace("```", "").strip()
 
         result = json.loads(raw)
 
-        # Validasi format
-        if "code" not in result:
-            raise ValueError("Key 'code' tidak ditemukan")
+        # Pastikan result adalah list
+        if not isinstance(result, list):
+            result = [result]
 
-        code = result["code"].upper()
+        # Validasi setiap item
+        validated = []
+        for item in result:
+            code = item.get("code", "E").upper()
+            if code not in TACTICAL_MAPPING:
+                code = "E"
+            validated.append({
+                "code"  : code,
+                "label" : TACTICAL_MAPPING[code]["label"],
+            })
 
-        # Validasi kode valid
-        if code not in TACTICAL_MAPPING:
-            code = "E"
+        # Batasi maksimal 3
+        validated = validated[:3]
 
-        return {"code": code, "status": "ok", "message": ""}
+        return {"results": validated, "status": "ok", "message": ""}
 
     except json.JSONDecodeError:
         return {
-            "code": "E",
-            "status": "error",
-            "message": "Gemini return format tidak valid"
+            "results": [{"code": "E", "label": "Tahan Posisi"}],
+            "status" : "error",
+            "message": "Format response Gemini tidak valid"
         }
 
     except Exception as e:
         return {
-            "code": "E",
-            "status": "error",
+            "results": [{"code": "E", "label": "Tahan Posisi"}],
+            "status" : "error",
             "message": str(e)
         }
