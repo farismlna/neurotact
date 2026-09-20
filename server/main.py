@@ -43,6 +43,39 @@ def get_mapping():
 def health():
     return {"status": "ok"}
 
+@app.get("/command/{code}")
+async def get_command(code: str):
+    """
+    Endpoint khusus WearOS.
+    WearOS hit GET /command/A untuk ambil detail instruksi kode A.
+    """
+    code = code.upper()
+    
+    if code not in TACTICAL_MAPPING:
+        raise HTTPException(
+            status_code = 404,
+            detail      = f"Kode {code} tidak ditemukan"
+        )
+    
+    return {
+        "code"      : code,
+        "label"     : TACTICAL_MAPPING[code]["label"],
+        "timestamp" : int(time.time() * 1000)
+    }
+
+@app.get("/commands")
+async def list_commands():
+    """
+    Endpoint untuk WearOS ambil semua mapping instruksi yang tersedia.
+    Berguna saat WearOS pertama kali connect untuk sync mapping.
+    """
+    result = {}
+    for code, data in TACTICAL_MAPPING.items():
+        result[code] = {
+            "label": data["label"]
+        }
+    return result
+
 @app.post("/process", response_model=ProcessResponse)
 async def process(input: SpeechInput):
     if not input.text or len(input.text.strip()) == 0:
